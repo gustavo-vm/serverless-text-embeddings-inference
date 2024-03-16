@@ -67,21 +67,21 @@ COPY proto proto
 
 RUN cargo build --release --bin text-embeddings-router -F grpc -F candle -F mkl-dynamic --no-default-features && sccache -s
 
-FROM python:3.10.13-slim-bookworm as base
+FROM debian:bookworm-slim as base
 
 ENV HUGGINGFACE_HUB_CACHE=/data \
-    PORT=3000 \
+    PORT=80 \
     MKL_ENABLE_INSTRUCTIONS=AVX512_E4 \
     RAYON_NUM_THREADS=8 \
     LD_PRELOAD=/usr/local/libfakeintel.so \
     LD_LIBRARY_PATH=/usr/local/lib
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    libomp-16-dev \
+    libomp-dev \
     ca-certificates \
     libssl-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
-
 
 # Copy a lot of the Intel shared objects because of the mkl_serv_intel_cpu_true patch...
 COPY --from=builder /opt/intel/oneapi/mkl/latest/lib/intel64/libmkl_intel_lp64.so.2 /usr/local/lib/libmkl_intel_lp64.so.2
@@ -95,48 +95,16 @@ COPY --from=builder /opt/intel/oneapi/mkl/latest/lib/intel64/libmkl_avx2.so.2 /u
 COPY --from=builder /opt/intel/oneapi/mkl/latest/lib/intel64/libmkl_avx512.so.2 /usr/local/lib/libmkl_avx512.so.2
 COPY --from=builder /usr/src/libfakeintel.so /usr/local/libfakeintel.so
 
+FROM base as grpc
 
-FROM base as lambda_build
+COPY --from=grpc-builder /usr/src/target/release/text-embeddings-router /usr/local/bin/text-embeddings-router
 
-ENV LAMBDA_TASK_ROOT=/var/task
-RUN mkdir -p ${LAMBDA_TASK_ROOT}
-WORKDIR ${LAMBDA_TASK_ROOT}
+ENTRYPOINT ["text-embeddings-router"]
+CMD ["--json-output"]
 
-# install our dependencies
-RUN apt update -y && apt upgrade -y && \
-    apt-get install curl -y
-RUN pip install awslambdaric --target ${LAMBDA_TASK_ROOT} 
-RUN pip install boto3 --target ${LAMBDA_TASK_ROOT}
-RUN pip install numpy --target ${LAMBDA_TASK_ROOT}
-RUN pip install --upgrade urllib3==1.26.18 --target ${LAMBDA_TASK_ROOT}
+FROM base
 
-# install Runtime Interface Emulator (RIE) to run locally
-RUN curl -Lo aws-lambda-rie https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie \
-&& chmod +x aws-lambda-rie
-RUN mv aws-lambda-rie /usr/local/bin/aws-lambda-rie
-
-COPY lambda_entrypoint.sh /lambda_entrypoint.sh
-RUN chmod +x /lambda_entrypoint.sh
-
-FROM lambda_build as download_model
-
-ARG MODEL_ID
-
-RUN pip install huggingface-hub --target ${LAMBDA_TASK_ROOT}  
-#download model
-RUN python -c "import os; from huggingface_hub import snapshot_download; snapshot_download(repo_id=os.environ['MODEL_ID'])"
-
-RUN find -L /data -maxdepth 12 -name 'pytorch_model.bin' -type f -exec rm -f {} +
-
-FROM download_model as lambda
-
-#install dependencies
-RUN pip install requests --target ${LAMBDA_TASK_ROOT} 
 COPY --from=http-builder /usr/src/target/release/text-embeddings-router /usr/local/bin/text-embeddings-router
 
-# Copy function code and models into our /var/task
-COPY index.py ${LAMBDA_TASK_ROOT}/
-
-
-ENTRYPOINT ["/lambda_entrypoint.sh"]
-CMD [ "index.lambda_handler" ]
+ENTRYPOINT ["text-embeddings-router"]
+CMD ["--json-output"]
