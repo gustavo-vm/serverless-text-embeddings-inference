@@ -40,7 +40,7 @@ This command can take several minutes since TEI is a Rust framework and needs to
 Login at AWS ECR, create the image repository, and pull the build:
 
 ```sh
-aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin `<account_id>`.dkr.ecr.<region>.amazonaws.com  
+aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <account_id>.dkr.ecr.<region>.amazonaws.com  
 
 aws ecr create-repository --repository-name <ecr_repo_name> --region <region>
 
@@ -75,7 +75,7 @@ docker run -e MODEL_ID=`<model_id>` --rm -p 9000:8080 --name serverless_tei_test
 </details>
 
 <details>
-<summary>Call the service</summary>
+<summary>Calling the service</summary>
 And in the other:
 
 ```sh
