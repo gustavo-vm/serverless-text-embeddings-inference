@@ -19,7 +19,7 @@ We conducted an experiemnt to evaluate the effectiveness of this PoC. The experi
 |  E5 small  |               4 s |             300 ms |                17.8 |        $0.03  |
 
 
-# Running at AWS
+# Running on AWS
 
 Considering that you have configured AWS CLI on your computer, use the following steps to deploy:
 
@@ -41,6 +41,8 @@ Login at AWS ECR, create the image repository, and pull the build:
 
 ```sh
 aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin `<account_id>`.dkr.ecr.<region>.amazonaws.com  
+
+aws ecr create-repository --repository-name <ecr_repo_name> --region <region>
 
 docker push <account_id>.dkr.ecr.<region>.amazonaws.com/<ecr_repo_name>:latest  
 ```
