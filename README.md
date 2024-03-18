@@ -1,7 +1,7 @@
 
 # Serverless LLM - Text Embeddings Inference
 
-This is a proof-of-concept (PoC) where I adapted TEI (Text Embedding Inference) framework to run as a serverless application in AWS Lambda. You can find more information about this project here.
+This is a proof-of-concept (PoC) where I adapted TEI (Text Embedding Inference) framework to run as a serverless application in AWS Lambda. You can find more information about this project [HERE](https://gustavo-vieira-m.medium.com/serverless-llm-como-fazer-muito-com-pouco-cb45dd86d6e4).
 
 
 ## Results
